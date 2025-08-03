@@ -67,39 +67,46 @@ export class PostsService {
     }
 
     async findAllByUser(userId: number) {
-    const cacheKey = `userPosts:${userId}`;
-    const cached = await this.cacheManager.get(cacheKey);
-    if (cached) {
-        return cached;
-    }
-    
-    const posts: PostEntity[] = await this.postRepository.find({
-        where: { author: { id: userId } },
-    });
+        const cacheKey = `userPosts:${userId}`;
+        const cached = await this.cacheManager.get(cacheKey);
+        if (cached) {
+            return cached;
+        }
+        
+        const posts: PostEntity[] = await this.postRepository.find({
+            where: { author: { id: userId } },
+        });
 
-    try {
-        await this.cacheManager.set(cacheKey, posts);
-    } catch (error) {
-        console.error(`Failed to cache posts for key: ${cacheKey}`, error);
-    }
+        try {
+            await this.cacheManager.set(cacheKey, posts);
+        } catch (error) {
+            console.error(`Failed to cache posts for key: ${cacheKey}`, error);
+        }
 
-    return posts;
-}
+        return posts;
+    }
 
     async updatePost(postId: number, dto: UpdatePostDto): Promise<void> {
-        const post = await this.postRepository.findOne({where: {id: postId}});
+        const post = await this.postRepository.findOne({where: {id: postId}, relations: ['author']  });
         if(!post) {
             throw new NotFoundException('Post not found');
         }
 
         Object.assign(post, dto);
         await this.postRepository.save(post);
+
+        const userPostsKey = `userPosts:${post.author.id}`;
+        await this.cacheManager.del(userPostsKey);
     }
 
     async deletePost(postId: number): Promise<void> {
-        const result = await this.postRepository.delete({ id: postId });
-        if (result.affected === 0) {
+        const post = await this.postRepository.findOne({ where: { id: postId }, relations: ['author'] });
+        if (!post) {
             throw new NotFoundException('Post not found');
         }
+
+        await this.postRepository.delete({ id: postId });
+        const userPostsKey = `userPosts:${post.author.id}`;
+        await this.cacheManager.del(userPostsKey);
     }
 } 
