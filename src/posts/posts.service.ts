@@ -72,12 +72,13 @@ export class PostsService {
     if (cached) {
         return cached;
     }
+    
     const posts: PostEntity[] = await this.postRepository.find({
         where: { author: { id: userId } },
     });
 
     try {
-        await this.cacheManager.set(cacheKey, JSON.stringify(posts), 60 * 1000);
+        await this.cacheManager.set(cacheKey, posts);
     } catch (error) {
         console.error(`Failed to cache posts for key: ${cacheKey}`, error);
     }

@@ -1,4 +1,4 @@
-import { Module, Logger } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -8,11 +8,8 @@ import { PostsModule } from './posts/posts.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { SharedModule } from './shared/shared.module';
-import { CacheInterceptor, CacheModule} from '@nestjs/cache-manager';
+import { CacheModule} from '@nestjs/cache-manager';
 import { redisConfig } from './config/redis.config';
-
-import { APP_INTERCEPTOR } from '@nestjs/core';
-import { redisStore } from 'cache-manager-redis-yet';
 
 @Module({
   imports: [
@@ -27,14 +24,8 @@ import { redisStore } from 'cache-manager-redis-yet';
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => {
-        const redisOptions = await redisConfig(configService);
-        return {
-          store: await redisStore(redisOptions),
-          ...redisOptions,
-        };
-      },
-    inject: [ConfigService],
+      inject: [ConfigService],
+      useFactory: redisConfig
     }),
     PostsModule,
     UsersModule,
@@ -42,9 +33,6 @@ import { redisStore } from 'cache-manager-redis-yet';
     SharedModule,
   ],
   controllers: [AppController],
-  providers: [AppService,{
-      provide: APP_INTERCEPTOR,
-      useClass: CacheInterceptor,
-    },],
+  providers: [AppService,],
 })
 export class AppModule {}
